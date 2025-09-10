@@ -7,7 +7,7 @@ export const meta: MetaFunction = () => {
 
 export default function FirstDemoLayout() {
   useEffect(() => {
-    navigator.serviceWorker.register('/01/sw.js')
+    navigator.serviceWorker.register('/02/sw.js')
   }, [])
 
   return <Outlet />
