@@ -27,6 +27,29 @@ addEventListener('install', (event) => {
 addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
+  if (precachedAssets.includes(url.pathname)) {
+    return event.respondWith(
+      (async () => {
+        const cache = await caches.open(pagesCacheName)
+        const cachedResponse = await cache.match(event.request)
+
+        if (cachedResponse) {
+          event.waitUntil(
+            fetch(event.request).then((originalResponse) => {
+              if (originalResponse.ok) {
+                cache.put(event.request, originalResponse.clone())
+              }
+            }),
+          )
+
+          return cachedResponse
+        }
+
+        return fetch(event.request)
+      })(),
+    )
+  }
+
   if (
     event.request.destination === 'image' ||
     event.request.destination === 'font' ||
@@ -66,29 +89,6 @@ addEventListener('fetch', (event) => {
           .catch(() => {
             return cache.match(event.request)
           })
-      })(),
-    )
-  }
-
-  if (precachedAssets.includes(url.pathname)) {
-    return event.respondWith(
-      (async () => {
-        const cache = await caches.open(pagesCacheName)
-        const cachedResponse = await cache.match(event.request)
-
-        if (cachedResponse) {
-          event.waitUntil(
-            fetch(event.request).then((originalResponse) => {
-              if (originalResponse.ok) {
-                cache.put(event.request, originalResponse.clone())
-              }
-            }),
-          )
-
-          return cachedResponse
-        }
-
-        return fetch(event.request)
       })(),
     )
   }
