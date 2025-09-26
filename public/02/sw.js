@@ -2,7 +2,7 @@ const assetsCacheName = 'assets-v1'
 const pagesCacheName = 'pages-v1'
 
 addEventListener('install', (event) => {
-  event.waitUntil(caches.open(assetsCacheName))
+  event.waitUntil(Promise.all([caches.open(assetsCacheName), caches.open(pagesCacheName)]))
 })
 
 addEventListener('fetch', (event) => {
@@ -14,7 +14,7 @@ addEventListener('fetch', (event) => {
   ) {
     event.respondWith(
       (async () => {
-        const cache = await caches.open('cache')
+        const cache = await caches.open(assetsCacheName)
         const cachedResponse = await cache.match(event.request)
 
         if (cachedResponse) {
@@ -22,7 +22,9 @@ addEventListener('fetch', (event) => {
         }
 
         const originalResponse = await fetch(event.request)
-        cache.put(event.request, originalResponse.clone())
+        if (originalResponse.ok) {
+          cache.put(event.request, originalResponse.clone())
+        }
         return originalResponse
       })(),
     )
@@ -35,7 +37,9 @@ addEventListener('fetch', (event) => {
 
         return fetch(event.request)
           .then((originalResponse) => {
-            cache.put(event.request, originalResponse.clone())
+            if (originalResponse.ok) {
+              cache.put(event.request, originalResponse.clone())
+            }
             return originalResponse
           })
           .catch(() => {
