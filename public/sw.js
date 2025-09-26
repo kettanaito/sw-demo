@@ -1,18 +1,39 @@
 const assetsCacheName = 'assets-v1'
 const pagesCacheName = 'pages-v1'
+const precachedAssets = ['/', '/about', '/contacts']
 
 addEventListener('install', (event) => {
-  event.waitUntil(Promise.all([caches.open(assetsCacheName), caches.open(pagesCacheName)]))
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys()
+
+      for (const key of keys) {
+        await caches.delete(key)
+      }
+    })(),
+  )
+
+  event.waitUntil(
+    Promise.all([caches.open(assetsCacheName), caches.open(pagesCacheName)]),
+  )
+
+  event.waitUntil(
+    caches.open(pagesCacheName).then((cache) => {
+      cache.addAll(precachedAssets)
+    }),
+  )
 })
 
 addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url)
+
   if (
     event.request.destination === 'image' ||
     event.request.destination === 'font' ||
     event.request.destination === 'style' ||
     event.request.destination === 'script'
   ) {
-    event.respondWith(
+    return event.respondWith(
       (async () => {
         const cache = await caches.open(assetsCacheName)
         const cachedResponse = await cache.match(event.request)
@@ -31,7 +52,7 @@ addEventListener('fetch', (event) => {
   }
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(
+    return event.respondWith(
       (async () => {
         const cache = await caches.open(pagesCacheName)
 
@@ -45,6 +66,29 @@ addEventListener('fetch', (event) => {
           .catch(() => {
             return cache.match(event.request)
           })
+      })(),
+    )
+  }
+
+  if (precachedAssets.includes(url.pathname)) {
+    return event.respondWith(
+      (async () => {
+        const cache = await caches.open(pagesCacheName)
+        const cachedResponse = await cache.match(event.request)
+
+        if (cachedResponse) {
+          event.waitUntil(
+            fetch(event.request).then((originalResponse) => {
+              if (originalResponse.ok) {
+                cache.put(event.request, originalResponse.clone())
+              }
+            }),
+          )
+
+          return cachedResponse
+        }
+
+        return fetch(event.request)
       })(),
     )
   }
