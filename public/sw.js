@@ -16,10 +16,12 @@ addEventListener('install', (event) => {
   event.waitUntil(
     Promise.all([caches.open(assetsCacheName), caches.open(pagesCacheName)]),
   )
+})
 
+addEventListener('activate', (event) => {
   event.waitUntil(
     caches.open(pagesCacheName).then((cache) => {
-      cache.addAll(precachedAssets)
+      return cache.addAll(precachedAssets)
     }),
   )
 })
@@ -32,6 +34,8 @@ addEventListener('fetch', (event) => {
       (async () => {
         const cache = await caches.open(pagesCacheName)
         const cachedResponse = await cache.match(event.request)
+
+        console.warn('preloaded', url.pathname, { cachedResponse })
 
         if (cachedResponse) {
           event.waitUntil(
