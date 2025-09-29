@@ -4,21 +4,23 @@ const precachedAssets = ['/', '/about', '/contacts']
 
 addEventListener('install', (event) => {
   event.waitUntil(
-    (async () => {
-      const keys = await caches.keys()
-
-      for (const key of keys) {
-        await caches.delete(key)
-      }
-    })(),
-  )
-
-  event.waitUntil(
     Promise.all([caches.open(assetsCacheName), caches.open(pagesCacheName)]),
   )
 })
 
 addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys()
+
+      for (const key of keys) {
+        if (![assetsCacheName, pagesCacheName].includes(key)) {
+          await caches.delete(key)
+        }
+      }
+    })(),
+  )
+
   event.waitUntil(
     caches.open(pagesCacheName).then((cache) => {
       return cache.addAll(precachedAssets)
